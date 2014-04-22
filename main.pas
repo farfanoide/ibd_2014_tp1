@@ -27,7 +27,7 @@ VAR
   f : Longword;
   i : Integer;
   a : r_control;
-  p : r_persona;
+  rp_aux : r_persona;
   n_dni: Integer;
   leido : char;
   nom_arch: String;
@@ -87,22 +87,58 @@ BEGIN
     end;
 
     'e': begin
+      write('Ingrese el nombre para exportar:');
+      read(nom_arch);
+      Exportar(a, nom_arch);
     end;
+
     'f': begin
+      armar_registro(rp_aux);
+      Insertar(a, rp_aux);
+      if (not fallo_ultima_operacion(a)) then begin
+        writeln('Registro insertado satisfactoriamente');
+      end else begin
+        writeln('El registro ya se encontraba en el archivo');
+      end;
     end;
     'g': begin
-    end;
+      write('Ingrese el DNI a eliminar:');
+      read(n_dni);
+      Eliminar(a, n_dni);
+      if (not fallo_ultima_operacion(a)) then begin
+        writeln('regsitro borrado');
+      end else begin
+        writeln('No se encontro el registro');
+      end;
+      end;
+
     'h': begin
+        armar_registro(rp_aux);
+        with rp_aux do
+        begin
+        Modificar(a, nombre, dni, f_nac);
+        mostrar_resultado(a, 'No se encontro el registro');
+
+        end;
     end;
     'i': begin
+        writeln('ingrese nombre para el nuevo archivo');
+        read(nom_arch);
+        Respaldar(a, nom_arch);
+
     end;
     'k': begin
       Inicializar(a, 'test.dat');
       f := 230987;
+      reset(a.a_persona);
       for i := 0 to 20 do begin
         Cargar(a, 'sarasa', i, f);
       end;
-      GuardarCambios(a);
+
+      // GuardarCambios(a);
+      reset(a.a_persona);
+      read(a.a_persona, a.r_aux);
+      writeln(a.r_aux.prox);
     end;
 
 
