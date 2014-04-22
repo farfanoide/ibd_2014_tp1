@@ -21,13 +21,20 @@ TYPE
     arch    : ta_personas;
   end;
 
-procedure inicializar(var ctl:tr_ctl, n_nomarch);
+procedure inicializar_bloque(var ctl:tr_ctl);
+begin
+  with (ctl) do begin
+    librebl := tbloque;
+    ibloque := 1;
+  end;
+end;
+
+procedure inicializar(var ctl:tr_ctl; n_nomarch:string);
 begin
   with (ctl) do begin
     assign(arch, n_nomarch);
     rewrite(arch);
-    librebl := tbloque;
-    ibloque := 1;
+    inicializar_bloque(ctl);
   end;
 end;
 
@@ -50,33 +57,52 @@ begin
       move(tamcampo, bloque[ibloque], 2);
       inc(ibloque, 2);
       (* escribimos nombre *)
-      move(raux.nombra, bloque[ibloque], length(raux.nombre) + 1);
+      move(raux.nombre, bloque[ibloque], length(raux.nombre) + 1);
       inc(ibloque, length(raux.nombre) + 1);
       (* escribimos dni *)
       move(raux.dni, bloque[ibloque], sizeof(raux.dni));
       inc(ibloque, 2);
       dec(librebl, tamcampo);
-      end else begin
-        write(arch, bloque);
-        inicializar_bloque(ctl);
-      end;
+    end else begin
+      write(arch, bloque);
+      inicializar_bloque(ctl);
+    end;
   end;
 end;
+
+procedure cerrar_archivo(var ctl:tr_ctl);
+begin
+  close(ctl.arch)
+end;
+
+procedure print_archivo(var ctl:tr_ctl);
+begin
+  with (ctl) do begin
+    reset(arch);
+    while (not eof(arch)) do begin
+      read(arch, bloque);
+    end;
+
+  end;
+end;
+
 VAR
   arch_personas : ta_personas;
   raux : tr_persona;
   sarasa : string;
   esta : integer;
+  r_ctl :tr_ctl;
 BEGIN
-  (* cargar_teclado(raux); *)
-  (* while (raux.dni <> 0) do begin *)
-  (*   escribir_registro(arch_personas, raux) *)
-  (*   cargar_teclado(raux); *)
-  (* end; *)
-  (* cerrar_archivo(arch_personas); *)
-  (* print_archivo(arch_personas); *)
+  cargar_teclado(raux);
+  while (raux.dni <> 0) do begin
+    escribir_registro(r_ctl);
+    cargar_teclado(raux);
+  end;
+  cerrar_archivo(r_ctl);
+  print_archivo(r_ctl);
   writeln('Tests: =====================================');
   sarasa := 'naoisdfnaosidnfaosidfaosdinfaosidnfoaisdnfoaisndfoaisndfoiansdfoainsdofiansdofinasdoifnasdoifnaosdifnaosdinfaois';
+  writeln(length(sarasa));
   esta := sizeof(sarasa);
   writeln(sizeof(esta));
   writeln(sizeof(256));

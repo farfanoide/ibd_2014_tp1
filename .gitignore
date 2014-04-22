@@ -1,5 +1,5 @@
 *.o
 *.ppu
 main
-long_var
+long_var_test
 
