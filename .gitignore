@@ -1,2 +1,5 @@
 *.o
 *.ppu
+main
+long_var
+
