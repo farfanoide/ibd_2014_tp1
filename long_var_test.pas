@@ -47,30 +47,104 @@ begin
   readln(reg.dni);
 end;
 
+procedure print_registro(r:tr_persona);
+begin
+  with r do begin
+    writeln('nombre: ' + nombre);
+    writeln('dni: ', dni);
+    writeln('--------------------------------');
+  end;
+end;
+
 procedure escribir_registro(var ctl:tr_ctl);
 var
   tamcampo : integer;
 begin
   with (ctl) do begin
     tamcampo := length(raux.nombre) + 1 + sizeof(raux.dni);
-    if (librebl > tamcampo) then begin
-      (* escribimos tamanio total del registro *)
-      move(tamcampo, bloque[ibloque], 2);
-      inc(ibloque, 2);
-      (* escribimos nombre *)
-      move(raux.nombre, bloque[ibloque], length(raux.nombre) + 1);
-      inc(ibloque, length(raux.nombre) + 1);
-      (* escribimos dni *)
-      move(raux.dni, bloque[ibloque], sizeof(raux.dni));
-      inc(ibloque, 2);
-      dec(librebl, tamcampo);
-    end else begin
-      write(arch, bloque);
-      inicializar_bloque(ctl);
-    end;
+    (* if (librebl > tamcampo) then begin *)
+    (* escribimos tamanio total del registro *)
+    move(tamcampo, bloque[ibloque], sizeof(tamcampo));
+    inc(ibloque, sizeof(tamcampo));
+
+    (* escribimos nombre *)
+    move(raux.nombre, bloque[ibloque], length(raux.nombre) + 1);
+    inc(ibloque, length(raux.nombre) + 1);
+
+    (* escribimos dni *)
+    move(raux.dni, bloque[ibloque], sizeof(raux.dni));
+    inc(ibloque, sizeof(tamcampo));
+
+    (* reducimos escpacio libre del bloque *)
+    dec(librebl, tamcampo);
+    (* end else begin *)
+    (*   write(arch, bloque); *)
+    (*   inicializar_bloque(ctl); *)
+    (* end; *)
   end;
 end;
 
+Procedure imprimir_bloque(var ctl:tr_ctl);
+var
+  v : tv_personas;
+  n : string[30];
+  d,i,tr : integer;
+begin
+  v := ctl.bloque;
+
+  i := 1;
+  while i < 100 do begin
+    writeln('------------------------------------');
+    (* sacamos tamanio registro completo *)
+    move(v[i], tr, sizeof(tr));
+    inc(i, sizeof(tr));
+    writeln('tamanio de tr: ', tr);
+
+    (* sacamos tamanio nombre *)
+    move(v[i], tr, 1);
+    writeln('tamanio de nombre: ', tr);
+    move(v[i], n, tr+1);
+    writeln('nombre: ', n);
+    inc(i, tr + 1);
+
+    (* sacamos dni *)
+    move(v[i], d, sizeof(d));
+    writeln('dni: ', d);
+    inc(i, sizeof(d));
+    writeln('------------------------------------');
+  end;
+end;
+Procedure cargar_reg_en_raux(var ctl:tr_ctl);
+var
+  v : tv_personas;
+  n : string[30];
+  d,i,tr : integer;
+begin
+  v := ctl.bloque;
+
+  i := ctl.ibloque;
+  writeln('------------------------------------');
+  (* sacamos tamanio registro completo *)
+  move(v[i], tr, sizeof(tr));
+  inc(i, sizeof(tr));
+  writeln('tamanio de tr: ', tr);
+
+  (* sacamos tamanio nombre *)
+  move(v[i], tr, 1);
+  writeln('tamanio de nombre: ', tr);
+  move(v[i], n, tr+1);
+  writeln('nombre: ', n);
+  inc(i, tr + 1);
+  ctl.raux.nombre := n;
+
+  (* sacamos dni *)
+  move(v[i], d, sizeof(d));
+  writeln('dni: ', d);
+  inc(i, sizeof(d));
+  ctl.raux.dni := d;
+  writeln('------------------------------------');
+  ctl.ibloque := i;
+end;
 
 Procedure armar_reg_desde_vect(var raux:tr_persona; var v_reg:tv_persona);
 var
@@ -80,8 +154,8 @@ var
 begin
   ipersona := 1;
   // leo el tamaño del registro completo
-  move(v_reg[ipersona], tamreg, 2);
-  inc(ipersona, 2);
+  move(v_reg[ipersona], tamreg,  sizeof(tamreg));
+  inc(ipersona, sizeof(tamreg));
 
   // leo el tamaño del nombre y el nombre
   move(v_reg[ipersona], tamcampo, 1);
@@ -101,16 +175,14 @@ var
 begin
   with (ctl) do begin
     // leo el tamaño del registro
-    move(bloque[ibloque], tamreg, 2);
-    move(bloque[ibloque], vect_aux, tamreg + 2);
-    inc(ibloque, tamreg + 2);
-  writeln('tamos procesando el reg');
+    writeln('tamos procesando el reg');
     // si es negativo
     // aumento indice y salto al proximo
     //sino
-    armar_reg_desde_vect(raux, vect_aux);
+    cargar_reg_en_raux(ctl);
   end;
 end;
+
 procedure leer_registro(var ctl: tr_ctl);
 begin
 
@@ -151,14 +223,6 @@ begin
   // estado := cerrado.
 end;
 
-procedure print_registro(r:tr_persona);
-begin
-  with r do begin
-    writeln('nombre: ' + nombre);
-    writeln('dni: ', dni);
-    writeln('--------------------------------');
-  end;
-end;
 
 procedure print_archivo(var ctl:tr_ctl);
 begin
@@ -192,13 +256,23 @@ BEGIN
     escribir_registro(r_ctl);
     cargar_teclado(r_ctl.raux);
   end;
-  with r_ctl do begin
-    write(arch, bloque);
-  end;
-  cerrar_archivo(r_ctl);
 
-  print_archivo(r_ctl);
+  r_ctl.ibloque :=1;
+  procesar_registro(r_ctl);
+  writeln('imprimiendo raux');
+  print_registro(r_ctl.raux);
 
+  procesar_registro(r_ctl);
+  writeln('imprimiendo raux 2');
+  print_registro(r_ctl.raux);
+
+  (* with r_ctl do begin *)
+  (*   write(arch, bloque); *)
+  (* end; *)
+  (* cerrar_archivo(r_ctl); *)
+  (*  *)
+  (* print_archivo(r_ctl); *)
+  (*  *)
 
   writeln('Tests: =====================================');
   sarasa := 'naoisdfnaosidnfaosidfaosdinfaosidnfoaisdnfoaisndfoaisndfoiansdfoainsdofiansdofinasdoifnasdoifnaosdifnaosdinfaois';
