@@ -2,7 +2,7 @@ PROGRAM longvartest;
 
 CONST
   nomarch = 'long_var';
-  tbloque  = 500;
+  tbloque  = 16;
 TYPE
 
   tr_persona = Record
@@ -26,6 +26,9 @@ procedure inicializar_bloque(var ctl:tr_ctl);
 begin
   with (ctl) do begin
     librebl := tbloque;
+    (* for ibloque:=1 to tbloque do begin *)
+    (*   bloque[ibloque] := 0; *)
+    (* end; *)
     ibloque := 1;
   end;
 end;
@@ -62,25 +65,39 @@ var
 begin
   with (ctl) do begin
     tamcampo := length(raux.nombre) + 1 + sizeof(raux.dni);
-    (* if (librebl > tamcampo) then begin *)
-    (* escribimos tamanio total del registro *)
-    move(tamcampo, bloque[ibloque], sizeof(tamcampo));
-    inc(ibloque, sizeof(tamcampo));
+    if (librebl > tamcampo) then begin
+      (* escribimos tamanio total del registro *)
+      move(tamcampo, bloque[ibloque], sizeof(tamcampo));
+      inc(ibloque, sizeof(tamcampo));
 
-    (* escribimos nombre *)
-    move(raux.nombre, bloque[ibloque], length(raux.nombre) + 1);
-    inc(ibloque, length(raux.nombre) + 1);
+      (* escribimos nombre *)
+      move(raux.nombre, bloque[ibloque], length(raux.nombre) + 1);
+      inc(ibloque, length(raux.nombre) + 1);
 
-    (* escribimos dni *)
-    move(raux.dni, bloque[ibloque], sizeof(raux.dni));
-    inc(ibloque, sizeof(tamcampo));
+      (* escribimos dni *)
+      move(raux.dni, bloque[ibloque], sizeof(raux.dni));
+      inc(ibloque, sizeof(tamcampo));
 
-    (* reducimos escpacio libre del bloque *)
-    dec(librebl, tamcampo);
-    (* end else begin *)
-    (*   write(arch, bloque); *)
-    (*   inicializar_bloque(ctl); *)
-    (* end; *)
+      (* reducimos escpacio libre del bloque *)
+      dec(librebl, tamcampo);
+    end else begin
+      write(arch, bloque);
+      inicializar_bloque(ctl);
+      (* escribimos tamanio total del registro *)
+      move(tamcampo, bloque[ibloque], sizeof(tamcampo));
+      inc(ibloque, sizeof(tamcampo));
+
+      (* escribimos nombre *)
+      move(raux.nombre, bloque[ibloque], length(raux.nombre) + 1);
+      inc(ibloque, length(raux.nombre) + 1);
+
+      (* escribimos dni *)
+      move(raux.dni, bloque[ibloque], sizeof(raux.dni));
+      inc(ibloque, sizeof(tamcampo));
+
+      (* reducimos escpacio libre del bloque *)
+      dec(librebl, tamcampo);
+    end;
   end;
 end;
 
@@ -123,26 +140,20 @@ begin
   v := ctl.bloque;
 
   i := ctl.ibloque;
-  writeln('------------------------------------');
   (* sacamos tamanio registro completo *)
   move(v[i], tr, sizeof(tr));
   inc(i, sizeof(tr));
-  writeln('tamanio de tr: ', tr);
 
   (* sacamos tamanio nombre *)
   move(v[i], tr, 1);
-  writeln('tamanio de nombre: ', tr);
   move(v[i], n, tr+1);
-  writeln('nombre: ', n);
   inc(i, tr + 1);
   ctl.raux.nombre := n;
 
   (* sacamos dni *)
   move(v[i], d, sizeof(d));
-  writeln('dni: ', d);
   inc(i, sizeof(d));
   ctl.raux.dni := d;
-  writeln('------------------------------------');
   ctl.ibloque := i;
 end;
 
@@ -175,7 +186,6 @@ var
 begin
   with (ctl) do begin
     // leo el tamaño del registro
-    writeln('tamos procesando el reg');
     // si es negativo
     // aumento indice y salto al proximo
     //sino
@@ -186,15 +196,14 @@ end;
 procedure leer_registro(var ctl: tr_ctl);
 begin
 
-  writeln('llegamos a leer un reg');
   with (ctl) do begin
     // si no quedan registros en el bloque cargo otro bloque, sino leo
     if (ibloque >= (tbloque - librebl) ) then begin
       //termino el archivo,
-      writeln('hay bloqeu');
+      writeln('No hay mas registros en el bloque');
 
       if (not eof(arch)) then begin
-        writeln('no se termino el arch');
+        writeln('Leo proximo bloque.');
         //leer bloque de arch
         // ver si hay q guardar algo
         read(arch, bloque);
@@ -203,10 +212,11 @@ begin
         procesar_registro(ctl);
       end else begin
         // no hay mas bloques, ni registros.
-        writeln('No hay bloques ni registros.');
+        writeln('Fin archivo');
         raux.dni := -1;
       end ;
     end else begin
+      writeln('Hay registros en el bloque actual');
       procesar_registro(ctl);
     end;
   end;
@@ -223,6 +233,10 @@ begin
   // estado := cerrado.
 end;
 
+function regsize(r:tr_persona):integer;
+begin
+  regsize := length(r.nombre) + 1 + sizeof(r.dni) + 2;
+end;
 
 procedure print_archivo(var ctl:tr_ctl);
 begin
@@ -250,37 +264,42 @@ VAR
 BEGIN
 
   cargar_teclado(r_ctl.raux);
+  writeln('tamanio de registro:', regsize(r_ctl.raux));
 
   inicializar(r_ctl, 'sarasa');
   while (r_ctl.raux.dni <> 0) do begin
     escribir_registro(r_ctl);
     cargar_teclado(r_ctl.raux);
+    writeln('tamanio de registro:', regsize(r_ctl.raux));
   end;
 
-  r_ctl.ibloque :=1;
-  procesar_registro(r_ctl);
+  with r_ctl do begin
+    write(arch, bloque);
+  end;
+  cerrar_archivo(r_ctl);
+  (* print_archivo(r_ctl); *)
+
+
+  (* writeln('Tests: ====================================='); *)
+  reset(r_ctl.arch);
+  read(r_ctl.arch, r_ctl.bloque);
+  r_ctl.ibloque := 1;
+
+  (* test procesar_registro *)
+  leer_registro(r_ctl);
   writeln('imprimiendo raux');
   print_registro(r_ctl.raux);
 
-  procesar_registro(r_ctl);
+  leer_registro(r_ctl);
   writeln('imprimiendo raux 2');
   print_registro(r_ctl.raux);
 
-  (* with r_ctl do begin *)
-  (*   write(arch, bloque); *)
-  (* end; *)
-  (* cerrar_archivo(r_ctl); *)
-  (*  *)
-  (* print_archivo(r_ctl); *)
-  (*  *)
-
-  writeln('Tests: =====================================');
-  sarasa := 'naoisdfnaosidnfaosidfaosdinfaosidnfoaisdnfoaisndfoaisndfoiansdfoainsdofiansdofinasdoifnasdoifnaosdifnaosdinfaois';
-  writeln(length(sarasa));
-  esta := sizeof(sarasa);
-  writeln(sizeof(esta));
-  writeln(sizeof(256));
-  write(sizeof(integer));
+  (* sarasa := 'naoisdfnaosidnfaosidfaosdinfaosidnfoaisdnfoaisndfoaisndfoiansdfoainsdofiansdofinasdoifnasdoifnaosdifnaosdinfaois'; *)
+  (* writeln(length(sarasa)); *)
+  (* esta := sizeof(sarasa); *)
+  (* writeln(sizeof(esta)); *)
+  (* writeln(sizeof(256)); *)
+  (* write(sizeof(integer)); *)
 END.
 
 
