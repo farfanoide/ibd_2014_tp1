@@ -3,6 +3,7 @@ PROGRAM longvartest;
 CONST
   nomarch = 'long_var';
   tbloque  = 16;
+  corte = -1;
 TYPE
 
   tr_persona = Record
@@ -73,9 +74,9 @@ end;
 procedure Escribir_bloque_a_disco(ctl: tr_ctl);
 var aux : tr_bloque;
 begin
-    aux.bloque := ctl.bloque;
-    aux.free := ctl.librebl;
-    write(ctl.arch, aux);
+  aux.bloque := ctl.bloque;
+  aux.free := ctl.librebl;
+  write(ctl.arch, aux);
 end;
 
 procedure escribir_registro(var ctl :tr_ctl);
@@ -170,16 +171,23 @@ begin
 end;
 
 procedure Leer_Bloque(var ctl: tr_ctl);
- var aux :tr_bloque;
- begin
-   read(ctl.arch, aux);
-   ctl.bloque := aux.bloque;
-   ctl.librebl := aux.free;
-   ctl.ibloque := 1;
+var aux :tr_bloque;
+begin
+  read(ctl.arch, aux);
+  ctl.bloque := aux.bloque;
+  ctl.librebl := aux.free;
+  ctl.ibloque := 1;
 
- end; 
+end; 
 
-procedure leer_registro(var ctl: tr_ctl);
+Procedure Primero(var ctl:tr_ctl);
+{busca el primer registro del archivo, espera q el archivo haya sido guardado previamente}
+begin
+  reset(ctl.arch);
+  Leer_Bloque(ctl);
+end;
+
+procedure siguiente(var ctl: tr_ctl);
 begin
 
   with (ctl) do begin
@@ -200,7 +208,7 @@ begin
       end else begin
         // no hay mas bloques, ni registros.
         writeln('Fin archivo');
-        raux.dni := -1;
+        raux.dni := corte;
 
       end ;
     end else begin
@@ -222,27 +230,72 @@ begin
 end;
 
 
+function Recuperar(var ctl:tr_ctl; dni:longint):Boolean;
+var
+  encontre : Boolean;
+begin
+  (* TODO: utilizar metodos propios *)
+  encontre := false;
+  Primero(ctl);
+  while (not encontre) and (ctl.raux.dni <> corte) do begin
+    if (ctl.raux.dni = dni) then begin
+      encontre := true;
+    end else begin
+      siguiente(ctl);
+    end;
+  end;
+  Recuperar:= encontre;
+end;
+
+
+(* Procedure Eliminar(var a:tr_ctl; dni:Longint); *)
+(* var *)
+(*   pos_eliminar : Longword; *)
+(* begin *)
+(*   Recuperar(a, dni); *)
+(*   (* TODO: rever tuti con cito *) *)
+(*   if (not fallo_ultima_operacion(a)) then begin *)
+(*     with (a) do begin *)
+(*       pos_eliminar := filePos(a_persona) - 1 ; *)
+(*       seek(a_persona, pos_eliminar); *)
+(*       negar_registro(r_aux, libre); *)
+(*       write(a_persona, r_aux); *)
+(*       negar_registro(r_aux, pos_eliminar); *)
+(*       reset(a_persona); *)
+(*       write(a_persona, r_aux); *)
+(*       libre := r_aux.prox; *)
+(*       close(a_persona); *)
+(*       fallo := false; *)
+(*     end; *)
+(*   end; *)
+(* end; *)
+
+
+
+
+
 // procedure print_archivo(var ctl:tr_ctl);
 // begin
-//   with (ctl) do begin
-//     reset(arch);
-//     ibloque := 1;
-//     read(arch, bloque);
-//     writeln('reseteamos todo el archivo');
-//     leer_registro(ctl);
+  //   with (ctl) do begin
+    //     reset(arch);
+    //     ibloque := 1;
+    //     read(arch, bloque);
+    //     writeln('reseteamos todo el archivo');
+    //     siguiente(ctl);
 
-//     while (raux.dni <> -1) do begin
-//       print_registro(raux);
-//       leer_registro(ctl);
-//     end;
-//   end;
-// end;
+    //     while (raux.dni <> corte) do begin
+      //       print_registro(raux);
+      //       siguiente(ctl);
+      //     end;
+      //   end;
+      // end;
 
 VAR
   arch_personas : ta_personas;
   raux : tr_persona;
   sarasa : string;
   esta, cont : integer;
+  dni: Longint;
   r_ctl :tr_ctl;
 
 BEGIN
@@ -253,48 +306,56 @@ BEGIN
 
   while (r_ctl.raux.dni <> 0) do begin
 
-  escribir_registro(r_ctl);
+    escribir_registro(r_ctl);
 
-  writeln('tamanio de registro:', regsize(r_ctl.raux));
-  writeln('librebl: ', r_ctl.librebl);
+    writeln('tamanio de registro:', regsize(r_ctl.raux));
+    writeln('librebl: ', r_ctl.librebl);
 
-  cargar_teclado(r_ctl.raux);
-    
+    cargar_teclado(r_ctl.raux);
+
   end;
 
   Escribir_bloque_a_disco(r_ctl);
-  
+
   cerrar_archivo(r_ctl);
   (* print_archivo(r_ctl); *)
 
-
+  writeln('ingrese dni a recuperar:');
+  readln(dni);
+  if (recuperar(r_ctl, dni)) then begin
+    print_registro(r_ctl.raux);
+  end else begin
+    writeln('no se ncontro el reg');
+  end;
+  
   (* writeln('Tests: ====================================='); *)
 
-  reset(r_ctl.arch);
-
-  Leer_Bloque(r_ctl);
-
-  cont := 1;
-
-  while (r_ctl.raux.dni <> -1) do begin
-    
-    leer_registro(r_ctl);
-
-      if (r_ctl.raux.dni <> -1) then begin
-        writeln('Registro ', cont, ': ');
-        print_registro(r_ctl.raux);
-        // writeln('Aca ibloque es:', r_ctl.ibloque);
-        // writeln('Aca librebl es:', r_ctl.librebl);
-
-      end;
-
-    inc(cont, 1);
-
-  end;
-
+  //imprimir todo
+  (* reset(r_ctl.arch); *)
+  (*  *)
+  (* Leer_Bloque(r_ctl); *)
+  (*  *)
+  (* cont := 1; *)
+  (*  *)
+  (* while (r_ctl.raux.dni <> corte) do begin *)
+  (*  *)
+  (*   siguiente(r_ctl); *)
+  (*  *)
+  (*   if (r_ctl.raux.dni <> corte) then begin *)
+  (*     writeln('Registro ', cont, ': '); *)
+  (*     print_registro(r_ctl.raux); *)
+  (*     // writeln('Aca ibloque es:', r_ctl.ibloque); *)
+  (*     // writeln('Aca librebl es:', r_ctl.librebl); *)
+  (*  *)
+  (*   end; *)
+  (*  *)
+  (*   inc(cont, 1); *)
+  (*  *)
+  (* end; *)
+  (*  *)
   (* test procesar_registro *)
 
-  // leer_registro(r_ctl);
+  // siguiente(r_ctl);
   // writeln('imprimiendo raux 2');
   // print_registro(r_ctl.raux);
 
