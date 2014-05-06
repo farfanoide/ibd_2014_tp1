@@ -350,7 +350,54 @@ function Eliminar(var ctl: tr_ctl; dni:Longint): Boolean;
     Eliminar := encontre; 
      
  end; 
+function Insertar(var ctl :tr_ctl, n: string; dni : Longint): boolean;
+var
+esta : boolean
+begin
+  esta := recuperar(ctl, dni);
 
+  if not(esta) then begin
+      
+     with (ctl) do begin
+
+          raux.nombre := n;
+          raux.dni := dni;
+          escribir_registro(ctl);
+
+       Escribir_bloque_a_disco(ctl);
+
+      end;
+
+
+  end;
+
+  Insertar := not(esta);
+end;
+
+function Modificar(var ctl : tr_ctl; n: string; dni : Longint):Boolean;
+var 
+tamcampo: integer;
+elimine :boolean;
+begin
+  elimine := eliminar(ctl, dni);
+
+  if (elimine) then begin
+
+      with (ctl) do begin
+
+          raux.nombre := n;
+          raux.dni := dni;
+          escribir_registro(ctl);
+
+       Escribir_bloque_a_disco(ctl);
+
+      end;
+
+  end;
+
+
+  Modificar:= elimine;
+end;
 // procedure print_archivo(var ctl:tr_ctl);
 // begin
   //   with (ctl) do begin
@@ -422,11 +469,14 @@ BEGIN
 
  
   writeln('=======================');
-  writeln('ingrese dni a Borrar: ');
+  writeln('ingrese dni a Modificar: ');
   readln(dni);
+  writeln('ingrese nuevo nombre: ');
+  readln(sarasa);
   
-  if (eliminar(r_ctl, dni)) then begin
-    writeln('Registro con dni ', dni, ' eliminado. ');
+  
+  if (Modificar(r_ctl,sarasa ,dni )) then begin
+    writeln('Registro con dni ', dni, ' modificadooo. ');
   end
   else begin
       writeln('Registro con dni ', dni, ' no encontrado. ');
