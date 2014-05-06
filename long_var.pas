@@ -1,10 +1,12 @@
-PROGRAM longvartest;
+UNIT long_var;
 
-CONST
-  nomarch = 'long_var';
-  tbloque  = 25;
+Interface
+
+const
+  tbloque  = 17;
   corte = -1;
-TYPE
+
+type
 
   tr_persona = Record
     nombre: string;
@@ -28,6 +30,26 @@ TYPE
     raux    : tr_persona;
     arch    : ta_personas;
   end;
+
+procedure inicializar(var ctl:tr_ctl; n_nomarch:string);
+procedure Cargar(var ctl:tr_ctl; n_nom:string; n_dni:Longint);
+(* Procedure CargarDesdeRegistro(var a:tr_ctl; r:r_persona); *)
+(* procedure CargarDesdeTeclado(var a:tr_ctl); *)
+Procedure Primero(var ctl:tr_ctl);
+procedure siguiente(var ctl:tr_ctl);
+function Recuperar(var ctl:tr_ctl; dni:longint):Boolean;
+(* Procedure Exportar(var a:tr_ctl; nom_arch_txt:String); *)
+(* Procedure Insertar(var a:tr_ctl; r:r_persona); *)
+function Eliminar(var ctl: tr_ctl; dni:Longint): Boolean;
+(* Procedure Modificar(var a:tr_ctl; n_nombre:String; dni:Integer; n_f_nac:Longword); *)
+(* Procedure Respaldar(var a:tr_ctl; n_archivo:String); *)
+(* Procedure GuardarCambios(var a:tr_ctl); *)
+procedure MostrarRegistro(r:tr_persona);
+
+Implementation
+(* ========================================================= *)
+(* =====================Privados============================ *)
+(* ========================================================= *)
 
 procedure inicializar_bloque(var ctl:tr_ctl);
 begin
@@ -131,8 +153,10 @@ end;
 
 procedure Cargar(var ctl:tr_ctl; n_nom:string; n_dni:Longint);
 begin
-  raux.nombre := n_nom;
-  raux.dni := n_dni;
+  with ctl do begin
+    raux.nombre := n_nom;
+    raux.dni := n_dni;
+  end;
   escribir_registro(ctl);
 end;
 
@@ -341,27 +365,22 @@ begin
   Eliminar := encontre;
 
 end;
-function Insertar(var ctl :tr_ctl, n: string; dni : Longint): boolean;
+
+function Insertar(var ctl:tr_ctl; n: string; dni : Longint): boolean;
 var
-  esta : boolean
+  esta : boolean;
 begin
   esta := recuperar(ctl, dni);
 
   if not(esta) then begin
-
     with (ctl) do begin
-
       raux.nombre := n;
       raux.dni := dni;
       escribir_registro(ctl);
 
       Escribir_bloque_a_disco(ctl);
-
     end;
-
-
   end;
-
   Insertar := not(esta);
 end;
 
@@ -389,151 +408,6 @@ begin
 
   Modificar:= elimine;
 end;
-// procedure print_archivo(var ctl:tr_ctl);
-// begin
-  //   with (ctl) do begin
-    //     reset(arch);
-    //     ibloque := 1;
-    //     read(arch, bloque);
-    //     writeln('reseteamos todo el archivo');
-    //     avanzar(ctl);
 
-    //     while (raux.dni <> corte) do begin
-      //       MostrarRegistro(raux);
-      //       avanzar(ctl);
-      //     end;
-      //   end;
-      // end;
+End.
 
-VAR
-  arch_personas : ta_personas;
-  raux : tr_persona;
-  sarasa : string;
-  esta, cont : integer;
-  dni: Longint;
-  r_ctl :tr_ctl;
-
-BEGIN
-  inicializar(r_ctl, 'sarasa');
-
-
-  cargar_teclado(r_ctl.raux);
-
-  while (r_ctl.raux.dni <> 0) do begin
-
-    escribir_registro(r_ctl);
-    writeln(r_ctl.ibloque, ' ibloque dsp de escribir el reg.');
-
-    // writeln('tamanio del dni ', sizeof(r_ctl.raux.dni));
-    // writeln('tamanio del nombre ', length(r_ctl.raux.nombre)+1);
-    // writeln('tamanio de registro:', regsize(r_ctl.raux));
-    // writeln('librebl: ', r_ctl.librebl);
-    // writeln('__________________________________');
-
-    cargar_teclado(r_ctl.raux);
-
-  end;
-
-
-  Escribir_bloque_a_disco(r_ctl);
-  cerrar_archivo(r_ctl);
-
-  (* print_archivo(r_ctl); *)
-
-  // recuperar FUNCIONA PERFECTO.
-
-  // writeln('=======================');
-  // writeln('ingrese dni a recuperar:');
-  // readln(dni);
-
-  // if (recuperar(r_ctl, dni)) then begin
-    //   MostrarRegistro(r_ctl.raux);
-
-    // end else begin
-      //   writeln('no se ncontro el reg');
-
-      // end;
-
-      // FIN RECUPERAR.
-
-      // BORRAR
-
-
-      writeln('=======================');
-      writeln('ingrese dni a Modificar: ');
-      readln(dni);
-      writeln('ingrese nuevo nombre: ');
-      readln(sarasa);
-
-
-      if (Modificar(r_ctl,sarasa ,dni )) then begin
-        writeln('Registro con dni ', dni, ' modificadooo. ');
-      end
-      else begin
-        writeln('Registro con dni ', dni, ' no encontrado. ');
-
-      end;
-
-
-
-
-
-
-      cerrar_archivo(r_ctl);
-
-
-
-      writeln('=======================');
-      writeln('ingrese dni a recuperar:');
-      readln(dni);
-
-      if (recuperar(r_ctl, dni)) then begin
-        MostrarRegistro(r_ctl.raux);
-
-      end else begin
-        writeln('Registro NO encontrado.');
-
-      end;
-
-
-
-      (* writeln('Tests: ====================================='); *)
-
-      //imprimir todo
-      // reset(r_ctl.arch);
-
-      // Primero(r_ctl);
-
-      //    // falta leer primero, (registro)
-      // cont := 1;
-
-      // while (r_ctl.raux.dni <> corte) do begin
-
-        //   avanzar(r_ctl);
-
-        //     writeln('Registro ', cont, ': ');
-        //     MostrarRegistro(r_ctl.raux);
-
-        //   // if (r_ctl.raux.dni <> corte) then begin
-          //   //   // writeln('Aca ibloque es:', r_ctl.ibloque);
-          //   //   // writeln('Aca librebl es:', r_ctl.librebl);
-
-          //   // end;
-
-          //   inc(cont, 1);
-
-          // end;
-
-          //test procesar_registro
-
-          // avanzar(r_ctl);
-          // writeln('imprimiendo raux 2');
-          // MostrarRegistro(r_ctl.raux);
-
-          (* sarasa := 'naoisdfnaosidnfaosidfaosdinfaosidnfoaisdnfoaisndfoaisndfoiansdfoainsdofiansdofinasdoifnasdoifnaosdifnaosdinfaois'; *)
-          (* writeln(length(sarasa)); *)
-          (* esta := sizeof(sarasa); *)
-          (* writeln(sizeof(esta)); *)
-          (* writeln(sizeof(256)); *)
-          (* write(sizeof(integer)); *)
-END.
