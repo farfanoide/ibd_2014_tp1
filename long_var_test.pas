@@ -177,12 +177,10 @@ begin
     move(bloque[ibloque], tamreg, sizeof(tamreg));
 
     if (tamreg >= 1) then begin
-      
       cargar_reg_en_raux(ctl);
-    end
-    else begin
+    end else begin
         // VER SI ESTA BIENNNN
-        
+        raux.dni := corte;
     end;
 
     // leo el tamaño del registro
@@ -216,7 +214,7 @@ begin
 
 end;
 
-procedure siguiente(var ctl: tr_ctl);
+procedure avanzar(var ctl: tr_ctl);
 begin
 
   with (ctl) do begin
@@ -245,6 +243,16 @@ begin
   end;
 end;
 
+procedure siguiente(var ctl:tr_ctl);
+begin
+  avanzar(ctl);
+  while (ctl.raux.dni <> corte) do begin
+    if (not eof(ctl.arch)) then begin
+      avanzar(ctl);
+    end;
+  end;
+end;  
+
 
 procedure cerrar_archivo(var ctl:tr_ctl);
 begin
@@ -270,7 +278,7 @@ begin
     if (ctl.raux.dni = dni) then begin
       encontre := true;
     end else begin
-      siguiente(ctl);
+      avanzar(ctl);
     end;
   end;
   Recuperar:= encontre;
@@ -309,10 +317,6 @@ function Eliminar(var ctl: tr_ctl; dni:Longint): Boolean;
      
  end; 
 
-
-
-
-
 // procedure print_archivo(var ctl:tr_ctl);
 // begin
   //   with (ctl) do begin
@@ -320,11 +324,11 @@ function Eliminar(var ctl: tr_ctl; dni:Longint): Boolean;
     //     ibloque := 1;
     //     read(arch, bloque);
     //     writeln('reseteamos todo el archivo');
-    //     siguiente(ctl);
+    //     avanzar(ctl);
 
     //     while (raux.dni <> corte) do begin
       //       print_registro(raux);
-      //       siguiente(ctl);
+      //       avanzar(ctl);
       //     end;
       //   end;
       // end;
@@ -361,39 +365,38 @@ BEGIN
 
   Escribir_bloque_a_disco(r_ctl);
   cerrar_archivo(r_ctl);
+
   (* print_archivo(r_ctl); *)
 
   // recuperar FUNCIONA PERFECTO.
 
-  writeln('=======================');
-  writeln('ingrese dni a recuperar:');
-  readln(dni);
+  // writeln('=======================');
+  // writeln('ingrese dni a recuperar:');
+  // readln(dni);
 
-  if (recuperar(r_ctl, dni)) then begin
-    print_registro(r_ctl.raux);
+  // if (recuperar(r_ctl, dni)) then begin
+  //   print_registro(r_ctl.raux);
 
-  end else begin
-    writeln('no se ncontro el reg');
+  // end else begin
+  //   writeln('no se ncontro el reg');
 
-  end;
+  // end;
 
   // FIN RECUPERAR.
 
   // BORRAR
 
-  writeln(r_ctl.ibloque, ' es la pos de ibloque dsp de recuperar');
-
-  // vuelvo atras registro actual.
-  r_ctl.ibloque := r_ctl.ibloque - regsize(r_ctl.raux);
-
-  // cambio el dni por -dni
-  // escribo raux.  
-
-
-  siguiente(r_ctl);
-  writeln('reg recien leido:: ');
-  print_registro(r_ctl.raux);
+ 
+  writeln('=======================');
+  writeln('ingrese dni a Borrar: ');
+  readln(dni);
   
+  if (eliminar) then begin
+    
+  end
+  else begin
+    
+  end;
   
   (* writeln('Tests: ====================================='); *)
 
@@ -407,7 +410,7 @@ BEGIN
   (*  *)
   (* while (r_ctl.raux.dni <> corte) do begin *)
   (*  *)
-  (*   siguiente(r_ctl); *)
+  (*   avanzar(r_ctl); *)
   (*  *)
   (*   if (r_ctl.raux.dni <> corte) then begin *)
   (*     writeln('Registro ', cont, ': '); *)
@@ -423,7 +426,7 @@ BEGIN
   (*  *)
   (* test procesar_registro *)
 
-  // siguiente(r_ctl);
+  // avanzar(r_ctl);
   // writeln('imprimiendo raux 2');
   // print_registro(r_ctl.raux);
 
