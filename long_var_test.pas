@@ -2,7 +2,7 @@ PROGRAM longvartest;
 
 CONST
   nomarch = 'long_var';
-  tbloque  = 16;
+  tbloque  = 17;
   corte = -1;
 TYPE
 
@@ -82,10 +82,12 @@ end;
 procedure escribir_registro(var ctl :tr_ctl);
 var
   tamcampo : integer;
+  tamdni : Longint;
 begin
   with (ctl) do begin
     (* tamcampo := length(raux.nombre) + 1 + sizeof(raux.dni); *)
     tamcampo := regsize(raux);
+    writeln('Tamaño del reg: ', tamcampo);
 
     if (librebl >= tamcampo) then begin
       (* escribimos tamanio total del registro *)
@@ -98,7 +100,7 @@ begin
 
       (* escribimos dni *)
       move(raux.dni, bloque[ibloque], sizeof(raux.dni));
-      inc(ibloque, sizeof(tamcampo));
+      inc(ibloque, sizeof(tamdni));
 
       (* reducimos escpacio libre del bloque *)
       dec(librebl, tamcampo);
@@ -107,9 +109,8 @@ begin
 
 
       Escribir_bloque_a_disco(ctl);
-
-
       inicializar_bloque(ctl);
+
       (* escribimos tamanio total del registro *)
       move(tamcampo, bloque[ibloque], sizeof(tamcampo));
       inc(ibloque, sizeof(tamcampo));
@@ -120,7 +121,7 @@ begin
 
       (* escribimos dni *)
       move(raux.dni, bloque[ibloque], sizeof(raux.dni));
-      inc(ibloque, sizeof(tamcampo));
+      inc(ibloque, sizeof(tamdni));
 
       (* reducimos escpacio libre del bloque mas dos que ocupa el espacio*)
       dec(librebl, tamcampo);
@@ -138,22 +139,32 @@ begin
   v := ctl.bloque;
 
   i := ctl.ibloque;
+
+  
+
   (* sacamos tamanio registro completo *)
   move(v[i], tr, sizeof(tr));
   inc(i, sizeof(tr));
+  
 
   (* sacamos tamanio nombre *)
   move(v[i], tr, 1);
+  
   move(v[i], n, tr+1);
   inc(i, tr + 1);
+  
   ctl.raux.nombre := n;
 
   (* sacamos dni *)
+
   move(v[i], d, sizeof(d));
+  
   inc(i, sizeof(d));
   ctl.raux.dni := d;
 
+
   ctl.ibloque := i;
+
 end;
 
 Procedure procesar_registro(var ctl:tr_ctl);
@@ -162,11 +173,24 @@ var
   vect_aux: tv_persona;
 begin
   with (ctl) do begin
+
+    move(bloque[ibloque], tamreg, sizeof(tamreg));
+
+    if (tamreg >= 1) then begin
+      
+      cargar_reg_en_raux(ctl);
+    end
+    else begin
+        // VER SI ESTA BIENNNN
+        
+    end;
+
     // leo el tamaño del registro
     // si es negativo
     // aumento indice y salto al proximo
     //sino
-    cargar_reg_en_raux(ctl);
+
+
   end;
 end;
 
@@ -184,7 +208,12 @@ Procedure Primero(var ctl:tr_ctl);
 {busca el primer registro del archivo, espera q el archivo haya sido guardado previamente}
 begin
   reset(ctl.arch);
+  
   Leer_Bloque(ctl);
+  // TODO: ver que pasa si el archivo esta vacio (o tiene todos los registros borrados por ej.)
+  // donde lo controlamos?
+  procesar_registro(ctl);
+
 end;
 
 procedure siguiente(var ctl: tr_ctl);
@@ -195,13 +224,11 @@ begin
     if (ibloque >= (tbloque - librebl) ) then begin
       //termino el archivo,
 
-      writeln('');
-
       if (not eof(arch)) then begin
-        writeln('=====================');
+        //writeln('=====================');
         //leer bloque de arch
         // ver si hay q guardar algo
-
+        
         Leer_Bloque(ctl);
         procesar_registro(ctl);
 
@@ -212,7 +239,7 @@ begin
 
       end ;
     end else begin
-      writeln('---------------------------');
+      //writeln('---------------------------');
       procesar_registro(ctl);
     end;
   end;
@@ -236,7 +263,9 @@ var
 begin
   (* TODO: utilizar metodos propios *)
   encontre := false;
+
   Primero(ctl);
+
   while (not encontre) and (ctl.raux.dni <> corte) do begin
     if (ctl.raux.dni = dni) then begin
       encontre := true;
@@ -248,27 +277,37 @@ begin
 end;
 
 
-(* Procedure Eliminar(var a:tr_ctl; dni:Longint); *)
-(* var *)
-(*   pos_eliminar : Longword; *)
-(* begin *)
-(*   Recuperar(a, dni); *)
-(*   (* TODO: rever tuti con cito *) *)
-(*   if (not fallo_ultima_operacion(a)) then begin *)
-(*     with (a) do begin *)
-(*       pos_eliminar := filePos(a_persona) - 1 ; *)
-(*       seek(a_persona, pos_eliminar); *)
-(*       negar_registro(r_aux, libre); *)
-(*       write(a_persona, r_aux); *)
-(*       negar_registro(r_aux, pos_eliminar); *)
-(*       reset(a_persona); *)
-(*       write(a_persona, r_aux); *)
-(*       libre := r_aux.prox; *)
-(*       close(a_persona); *)
-(*       fallo := false; *)
-(*     end; *)
-(*   end; *)
-(* end; *)
+function Eliminar(var ctl: tr_ctl; dni:Longint): Boolean; 
+ var 
+   tamcampo : integer; 
+   encontre : Boolean;
+ begin 
+   encontre := false;
+   // TODO: rever tuti con cito 
+   if Recuperar(ctl, dni) then begin 
+
+     encontre := true;
+
+     with (ctl) do begin 
+
+      // me posiciono antes del reg a eliminar (que es el recuperado)
+      ibloque := ibloque - regsize(raux);
+
+      (* leo tamanio registro completo *)
+      move(bloque[ibloque], tamcampo, sizeof(tamcampo));
+
+      // negativizo
+      tamcampo := tamcampo * -1;
+
+      (* escribimos registro borrado *)
+      move(tamcampo, bloque[ibloque], sizeof(tamcampo));
+      
+     end ;
+     end;
+
+    Eliminar := encontre; 
+     
+ end; 
 
 
 
@@ -307,26 +346,54 @@ BEGIN
   while (r_ctl.raux.dni <> 0) do begin
 
     escribir_registro(r_ctl);
+    writeln(r_ctl.ibloque, ' ibloque dsp de escribir el reg.');
 
-    writeln('tamanio de registro:', regsize(r_ctl.raux));
-    writeln('librebl: ', r_ctl.librebl);
+    // writeln('tamanio del dni ', sizeof(r_ctl.raux.dni));
+    // writeln('tamanio del nombre ', length(r_ctl.raux.nombre)+1);
+    // writeln('tamanio de registro:', regsize(r_ctl.raux));
+    // writeln('librebl: ', r_ctl.librebl);
+    // writeln('__________________________________');
 
     cargar_teclado(r_ctl.raux);
 
   end;
 
-  Escribir_bloque_a_disco(r_ctl);
 
+  Escribir_bloque_a_disco(r_ctl);
   cerrar_archivo(r_ctl);
   (* print_archivo(r_ctl); *)
 
+  // recuperar FUNCIONA PERFECTO.
+
+  writeln('=======================');
   writeln('ingrese dni a recuperar:');
   readln(dni);
+
   if (recuperar(r_ctl, dni)) then begin
     print_registro(r_ctl.raux);
+
   end else begin
     writeln('no se ncontro el reg');
+
   end;
+
+  // FIN RECUPERAR.
+
+  // BORRAR
+
+  writeln(r_ctl.ibloque, ' es la pos de ibloque dsp de recuperar');
+
+  // vuelvo atras registro actual.
+  r_ctl.ibloque := r_ctl.ibloque - regsize(r_ctl.raux);
+
+  // cambio el dni por -dni
+  // escribo raux.  
+
+
+  siguiente(r_ctl);
+  writeln('reg recien leido:: ');
+  print_registro(r_ctl.raux);
+  
   
   (* writeln('Tests: ====================================='); *)
 
@@ -335,6 +402,7 @@ BEGIN
   (*  *)
   (* Leer_Bloque(r_ctl); *)
   (*  *)
+      // falta leer primero, (registro)
   (* cont := 1; *)
   (*  *)
   (* while (r_ctl.raux.dni <> corte) do begin *)
