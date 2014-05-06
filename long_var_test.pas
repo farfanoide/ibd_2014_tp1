@@ -2,7 +2,7 @@ PROGRAM longvartest;
 
 CONST
   nomarch = 'long_var';
-  tbloque  = 17;
+  tbloque  = 25;
   corte = -1;
 TYPE
 
@@ -170,25 +170,29 @@ end;
 Procedure procesar_registro(var ctl:tr_ctl);
 var
   tamreg: integer;
-  vect_aux: tv_persona;
+  
 begin
   with (ctl) do begin
 
     move(bloque[ibloque], tamreg, sizeof(tamreg));
 
+    
+
     if (tamreg >= 1) then begin
-      cargar_reg_en_raux(ctl);
+
+       cargar_reg_en_raux(ctl);
     end else begin
         // VER SI ESTA BIENNNN
-        raux.dni := corte;
+
+        raux.dni := -2;
+        ibloque := ibloque + regsize(raux);
+        
     end;
 
     // leo el tamaño del registro
     // si es negativo
     // aumento indice y salto al proximo
     //sino
-
-
   end;
 end;
 
@@ -202,17 +206,6 @@ begin
 
 end; 
 
-Procedure Primero(var ctl:tr_ctl);
-{busca el primer registro del archivo, espera q el archivo haya sido guardado previamente}
-begin
-  reset(ctl.arch);
-  
-  Leer_Bloque(ctl);
-  // TODO: ver que pasa si el archivo esta vacio (o tiene todos los registros borrados por ej.)
-  // donde lo controlamos?
-  procesar_registro(ctl);
-
-end;
 
 procedure avanzar(var ctl: tr_ctl);
 begin
@@ -246,13 +239,25 @@ end;
 procedure siguiente(var ctl:tr_ctl);
 begin
   avanzar(ctl);
-  while (ctl.raux.dni <> corte) do begin
-    if (not eof(ctl.arch)) then begin
-      avanzar(ctl);
-    end;
+
+  while (ctl.raux.dni = -2) and (ctl.raux.dni <> corte) do begin
+
+    avanzar(ctl);
+
   end;
 end;  
 
+Procedure Primero(var ctl:tr_ctl);
+{busca el primer registro del archivo, espera q el archivo haya sido guardado previamente}
+begin
+  reset(ctl.arch);
+  
+  Leer_Bloque(ctl);
+  // TODO: ver que pasa si el archivo esta vacio (o tiene todos los registros borrados por ej.)
+  // donde lo controlamos?
+  siguiente(ctl);
+
+end;
 
 procedure cerrar_archivo(var ctl:tr_ctl);
 begin
@@ -269,16 +274,17 @@ function Recuperar(var ctl:tr_ctl; dni:longint):Boolean;
 var
   encontre : Boolean;
 begin
-  (* TODO: utilizar metodos propios *)
   encontre := false;
 
   Primero(ctl);
 
   while (not encontre) and (ctl.raux.dni <> corte) do begin
+  
     if (ctl.raux.dni = dni) then begin
       encontre := true;
     end else begin
-      avanzar(ctl);
+
+      siguiente(ctl);
     end;
   end;
   Recuperar:= encontre;
@@ -288,29 +294,57 @@ end;
 function Eliminar(var ctl: tr_ctl; dni:Longint): Boolean; 
  var 
    tamcampo : integer; 
+   tamdni : Longint;
    encontre : Boolean;
  begin 
    encontre := false;
+
    // TODO: rever tuti con cito 
-   if Recuperar(ctl, dni) then begin 
+   if (recuperar(ctl, dni)) then begin 
 
      encontre := true;
 
      with (ctl) do begin 
-
-      // me posiciono antes del reg a eliminar (que es el recuperado)
-      ibloque := ibloque - regsize(raux);
-
-      (* leo tamanio registro completo *)
-      move(bloque[ibloque], tamcampo, sizeof(tamcampo));
-
-      // negativizo
+      tamcampo := regsize(raux);
       tamcampo := tamcampo * -1;
 
-      (* escribimos registro borrado *)
+    // me posiciono antes del reg a eliminar (que es el recuperado)
+      ibloque := ibloque - regsize(raux);
+
+      (* escribimos tamanio total del registro *)
       move(tamcampo, bloque[ibloque], sizeof(tamcampo));
-      
-     end ;
+      inc(ibloque, sizeof(tamcampo));
+
+      (* escribimos nombre *)
+      move(raux.nombre, bloque[ibloque], length(raux.nombre) + 1);
+      inc(ibloque, length(raux.nombre) + 1);
+
+      (* escribimos dni *)
+      tamdni := sizeof(raux.dni);
+      move(raux.dni, bloque[ibloque], sizeof(raux.dni));
+      inc(ibloque, sizeof(tamdni));
+
+
+
+      seek(arch, filepos(arch)-1);
+      Escribir_bloque_a_disco(ctl);
+
+
+
+       
+
+      // me posiciono antes del reg a eliminar (que es el recuperado)
+      // ibloque := ibloque - regsize(raux);
+
+      // (* leo tamanio registro completo *)
+      // move(bloque[ibloque], tamcampo, sizeof(tamcampo));
+
+      // // negativizo
+
+      // (* escribimos registro borrado *)
+      // move(tamcampo, bloque[ibloque], sizeof(tamcampo));
+      // sobreescribimos bloque en disco
+     end;
      end;
 
     Eliminar := encontre; 
@@ -391,40 +425,65 @@ BEGIN
   writeln('ingrese dni a Borrar: ');
   readln(dni);
   
-  if (eliminar) then begin
-    
+  if (eliminar(r_ctl, dni)) then begin
+    writeln('Registro con dni ', dni, ' eliminado. ');
   end
   else begin
-    
+      writeln('Registro con dni ', dni, ' no encontrado. ');
+
   end;
+
+
+
+
+
+
+cerrar_archivo(r_ctl);
+
+
+
+  writeln('=======================');
+  writeln('ingrese dni a recuperar:');
+  readln(dni);
+
+  if (recuperar(r_ctl, dni)) then begin
+    print_registro(r_ctl.raux);
+
+  end else begin
+    writeln('Registro NO encontrado.');
+
+  end;
+
+
   
   (* writeln('Tests: ====================================='); *)
 
   //imprimir todo
-  (* reset(r_ctl.arch); *)
-  (*  *)
-  (* Leer_Bloque(r_ctl); *)
-  (*  *)
-      // falta leer primero, (registro)
-  (* cont := 1; *)
-  (*  *)
-  (* while (r_ctl.raux.dni <> corte) do begin *)
-  (*  *)
-  (*   avanzar(r_ctl); *)
-  (*  *)
-  (*   if (r_ctl.raux.dni <> corte) then begin *)
-  (*     writeln('Registro ', cont, ': '); *)
-  (*     print_registro(r_ctl.raux); *)
-  (*     // writeln('Aca ibloque es:', r_ctl.ibloque); *)
-  (*     // writeln('Aca librebl es:', r_ctl.librebl); *)
-  (*  *)
-  (*   end; *)
-  (*  *)
-  (*   inc(cont, 1); *)
-  (*  *)
-  (* end; *)
-  (*  *)
-  (* test procesar_registro *)
+   // reset(r_ctl.arch); 
+    
+   // Primero(r_ctl); 
+    
+   //    // falta leer primero, (registro)
+   // cont := 1; 
+    
+   // while (r_ctl.raux.dni <> corte) do begin 
+    
+   //   avanzar(r_ctl); 
+    
+   //     writeln('Registro ', cont, ': '); 
+   //     print_registro(r_ctl.raux); 
+     
+   //   // if (r_ctl.raux.dni <> corte) then begin 
+   //   //   // writeln('Aca ibloque es:', r_ctl.ibloque); 
+   //   //   // writeln('Aca librebl es:', r_ctl.librebl); 
+    
+   //   // end; 
+    
+   //   inc(cont, 1); 
+    
+   // end; 
+    
+   //test procesar_registro 
 
   // avanzar(r_ctl);
   // writeln('imprimiendo raux 2');
